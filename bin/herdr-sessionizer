@@ -1,0 +1,77 @@
+#!/usr/bin/env bash
+# herdr-sessionizer — tmux-sessionizer for herdr
+# Pick an open herdr workspace or a project dir with fzf.
+#   workspace -> focus it
+#   dir       -> focus the workspace that has a pane in that dir, or create one
+#
+# Usage: herdr-sessionizer [dir]
+# Search roots: HERDR_SESSIONIZER_DIRS (space-separated), default below.
+
+set -euo pipefail
+
+read -ra roots <<< "${HERDR_SESSIONIZER_DIRS:-$HOME/Projects $HOME/cc}"
+depth=${HERDR_SESSIONIZER_DEPTH:-1}
+
+for cmd in herdr jq fzf; do
+    command -v "$cmd" >/dev/null || { echo "herdr-sessionizer: missing '$cmd'" >&2; exit 1; }
+done
+
+# Internal: fzf preview  (herdr-sessionizer --preview <kind> <target>)
+if [[ ${1:-} == --preview ]]; then
+    if [[ $2 == ws ]]; then
+        herdr pane list --workspace "$3" | jq -r '.result.panes[] |
+            "\(.tab_id)  \(.cwd | sub("^'"$HOME"'"; "~"))  \(.agent // "")  \(.terminal_title_stripped // "")"'
+    else
+        ls -A --color=always "$3"
+    fi
+    exit 0
+fi
+
+ws_json=$(herdr workspace list)
+
+focus_or_create() {
+    local dir label ws_id
+    dir=$(realpath "$1")
+    # Prefer a workspace that already has a pane in this dir, then one with the same label.
+    ws_id=$(herdr pane list | jq -r --arg d "$dir" \
+        '[.result.panes[] | select(.cwd == $d)][0].workspace_id // empty')
+    label=$(basename "$dir" | tr '.:' '__')
+    if [[ -z $ws_id ]]; then
+        ws_id=$(jq -r --arg l "$label" \
+            '[.result.workspaces[] | select(.label == $l)][0].workspace_id // empty' <<< "$ws_json")
+    fi
+    if [[ -n $ws_id ]]; then
+        herdr workspace focus "$ws_id" >/dev/null
+    else
+        herdr workspace create --cwd "$dir" --label "$label" --focus >/dev/null
+    fi
+}
+
+if [[ $# -ge 1 ]]; then
+    focus_or_create "$1"
+    exit 0
+fi
+
+# Each line: <kind> TAB <target> TAB <display>
+list_entries() {
+    jq -r '.result.workspaces[] |
+        "ws\t\(.workspace_id)\t\u001b[33m[ws]\u001b[0m \(.label)  \u001b[90m\(.tab_count) tabs · \(.agent_status)\u001b[0m"' \
+        <<< "$ws_json"
+    for r in "${roots[@]}"; do
+        [[ -d $r ]] || continue
+        find "$r" -mindepth 1 -maxdepth "$depth" -type d -not -name '.*' 2>/dev/null | sort |
+            while IFS= read -r d; do
+                printf 'dir\t%s\t%s\n' "$d" "${d/#$HOME/\~}"
+            done
+    done
+}
+
+self=$(realpath "$0")
+choice=$(list_entries | fzf --ansi --prompt='herdr> ' --delimiter='\t' --with-nth=3 \
+    --preview="'$self' --preview {1} {2}") || exit 0
+
+IFS=$'\t' read -r kind target _ <<< "$choice"
+case $kind in
+    ws)  herdr workspace focus "$target" >/dev/null ;;
+    dir) focus_or_create "$target" ;;
+esac

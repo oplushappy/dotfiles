@@ -1,0 +1,9 @@
+onboarding = false
+
+[[keys.command]]
+key = "prefix+f"
+type = "popup"
+command = "~/.local/bin/herdr-sessionizer"
+description = "sessionizer: open project workspace"
+width = "80%"
+height = "70%"
