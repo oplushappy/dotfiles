@@ -47,13 +47,9 @@ focus_or_create() {
     fi
 }
 
-if [[ $# -ge 1 ]]; then
-    focus_or_create "$1"
-    exit 0
-fi
-
 # Each line: <kind> TAB <target> TAB <display>
 list_entries() {
+    ws_json=$(herdr workspace list)
     jq -r '.result.workspaces[] |
         "ws\t\(.workspace_id)\t\u001b[33m[ws]\u001b[0m \(.label)  \u001b[90m\(.tab_count) tabs · \(.agent_status)\u001b[0m"' \
         <<< "$ws_json"
@@ -66,8 +62,21 @@ list_entries() {
     done
 }
 
+# Internal: used by fzf bindings
+case ${1:-} in
+    --list)  list_entries; exit 0 ;;
+    --close) [[ $2 == ws ]] && herdr workspace close "$3" >/dev/null; exit 0 ;;
+esac
+
+if [[ $# -ge 1 ]]; then
+    focus_or_create "$1"
+    exit 0
+fi
+
 self=$(realpath "$0")
 choice=$(list_entries | fzf --ansi --prompt='herdr> ' --delimiter='\t' --with-nth=3 \
+    --header='enter: open · ctrl-x: close workspace' \
+    --bind="ctrl-x:execute-silent('$self' --close {1} {2})+reload('$self' --list)" \
     --preview="'$self' --preview {1} {2}") || exit 0
 
 IFS=$'\t' read -r kind target _ <<< "$choice"
