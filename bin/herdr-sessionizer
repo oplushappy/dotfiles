@@ -10,7 +10,7 @@
 set -euo pipefail
 
 read -ra roots <<< "${HERDR_SESSIONIZER_DIRS:-$HOME/Projects $HOME/cc}"
-depth=${HERDR_SESSIONIZER_DEPTH:-1}
+depth=${HERDR_SESSIONIZER_DEPTH:-2}
 
 for cmd in herdr jq fzf; do
     command -v "$cmd" >/dev/null || { echo "herdr-sessionizer: missing '$cmd'" >&2; exit 1; }
@@ -59,7 +59,7 @@ list_entries() {
         <<< "$ws_json"
     for r in "${roots[@]}"; do
         [[ -d $r ]] || continue
-        find "$r" -mindepth 1 -maxdepth "$depth" -type d -not -name '.*' 2>/dev/null | sort |
+        find "$r" -mindepth 1 -maxdepth "$depth" -name '.*' -prune -o -type d -print 2>/dev/null | sort |
             while IFS= read -r d; do
                 printf 'dir\t%s\t%s\n' "$d" "${d/#$HOME/\~}"
             done
