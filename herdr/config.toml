@@ -7,3 +7,19 @@ command = "~/.local/bin/herdr-sessionizer"
 description = "sessionizer: open project workspace"
 width = "80%"
 height = "70%"
+
+[[keys.command]]
+key = "prefix+alt+k"
+type = "popup"
+command = "k9s"
+description = "k9s: kubernetes dashboard"
+width = "90%"
+height = "85%"
+
+[[keys.command]]
+key = "prefix+alt+g"
+type = "popup"
+command = "lazygit"
+description = "lazygit: git status / commit"
+width = "90%"
+height = "85%"
