@@ -8,6 +8,6 @@
 - `lazygit/config.yml` — lazygit theme (Catppuccin Mocha)
 
 ```sh
-sudo pacman -S --needed fish fzf fd eza zoxide neovim ripgrep jq lazygit gcc make unzip
+sudo pacman -S --needed fish fzf fd eza zoxide neovim ripgrep jq lazygit k9s gcc make unzip
 git clone <repo> ~/dotfiles && ~/dotfiles/install.sh
 ```
