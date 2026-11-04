@@ -1,6 +1,6 @@
 # tide prompt settings (universal vars), applied by install.sh.
 # Regenerate after `tide configure`:
-#   fish -c 'for v in (set -Un | string match "tide_*"); echo "set -U $v "(string escape -- $$v); end' > ~/dotfiles/fish/tide.fish
+#   fish -c 'for v in (set -Un | string match "tide_*"); echo set -U $v (string escape -- $$v | string join " "); end' > ~/dotfiles/fish/tide.fish
 set -U tide_aws_bg_color normal
 set -U tide_aws_color yellow
 set -U tide_aws_icon 
@@ -37,7 +37,7 @@ set -U tide_distrobox_color brmagenta
 set -U tide_distrobox_icon 󰆧
 set -U tide_docker_bg_color normal
 set -U tide_docker_color blue
-set -U tide_docker_default_contexts default set -U tide_docker_default_contexts colima
+set -U tide_docker_default_contexts default colima
 set -U tide_docker_icon 
 set -U tide_elixir_bg_color normal
 set -U tide_elixir_color magenta
@@ -58,7 +58,7 @@ set -U tide_git_color_untracked brblue
 set -U tide_git_color_upstream brgreen
 set -U tide_git_icon 
 set -U tide_git_truncation_length 24
-
+set -U tide_git_truncation_strategy
 set -U tide_go_bg_color normal
 set -U tide_go_color brcyan
 set -U tide_go_icon 
@@ -73,7 +73,7 @@ set -U tide_kubectl_bg_color normal
 set -U tide_kubectl_color blue
 set -U tide_kubectl_icon 󱃾
 set -U tide_left_prompt_frame_enabled false
-set -U tide_left_prompt_items os set -U tide_left_prompt_items pwd set -U tide_left_prompt_items git set -U tide_left_prompt_items newline set -U tide_left_prompt_items character
+set -U tide_left_prompt_items os pwd git newline character
 set -U tide_left_prompt_prefix ''
 set -U tide_left_prompt_separator_diff_color ' '
 set -U tide_left_prompt_separator_same_color ' '
@@ -110,12 +110,12 @@ set -U tide_pwd_color_truncated_dirs magenta
 set -U tide_pwd_icon 
 set -U tide_pwd_icon_home 
 set -U tide_pwd_icon_unwritable 
-set -U tide_pwd_markers .bzr set -U tide_pwd_markers .citc set -U tide_pwd_markers .git set -U tide_pwd_markers .hg set -U tide_pwd_markers .node-version set -U tide_pwd_markers .python-version set -U tide_pwd_markers .ruby-version set -U tide_pwd_markers .shorten_folder_marker set -U tide_pwd_markers .svn set -U tide_pwd_markers .terraform set -U tide_pwd_markers bun.lock set -U tide_pwd_markers Cargo.toml set -U tide_pwd_markers composer.json set -U tide_pwd_markers CVS set -U tide_pwd_markers go.mod set -U tide_pwd_markers go.work set -U tide_pwd_markers package.json set -U tide_pwd_markers build.zig
+set -U tide_pwd_markers .bzr .citc .git .hg .node-version .python-version .ruby-version .shorten_folder_marker .svn .terraform bun.lock Cargo.toml composer.json CVS go.mod go.work package.json build.zig
 set -U tide_python_bg_color normal
 set -U tide_python_color cyan
 set -U tide_python_icon 󰌠
 set -U tide_right_prompt_frame_enabled false
-set -U tide_right_prompt_items status set -U tide_right_prompt_items cmd_duration set -U tide_right_prompt_items context set -U tide_right_prompt_items jobs set -U tide_right_prompt_items direnv set -U tide_right_prompt_items bun set -U tide_right_prompt_items node set -U tide_right_prompt_items python set -U tide_right_prompt_items rustc set -U tide_right_prompt_items java set -U tide_right_prompt_items php set -U tide_right_prompt_items pulumi set -U tide_right_prompt_items ruby set -U tide_right_prompt_items go set -U tide_right_prompt_items gcloud set -U tide_right_prompt_items kubectl set -U tide_right_prompt_items distrobox set -U tide_right_prompt_items toolbox set -U tide_right_prompt_items terraform set -U tide_right_prompt_items aws set -U tide_right_prompt_items nix_shell set -U tide_right_prompt_items crystal set -U tide_right_prompt_items elixir set -U tide_right_prompt_items zig set -U tide_right_prompt_items time
+set -U tide_right_prompt_items status cmd_duration context jobs direnv bun node python rustc java php pulumi ruby go gcloud kubectl distrobox toolbox terraform aws nix_shell crystal elixir zig time
 set -U tide_right_prompt_prefix ' '
 set -U tide_right_prompt_separator_diff_color ' '
 set -U tide_right_prompt_separator_same_color ' '
