@@ -1,29 +1,49 @@
 #!/usr/bin/env bash
 # herdr-sessionizer — tmux-sessionizer for herdr
-# Pick an open herdr workspace or a project dir with fzf.
-#   workspace -> focus it
+# Pick an open herdr workspace (local or on a saved SSH machine) or a project dir with fzf.
+#   workspace -> focus it            (ctrl-x closes it)
 #   dir       -> focus the workspace that has a pane in that dir, or create one
 #
 # Usage: herdr-sessionizer [dir]
 # Search roots: HERDR_SESSIONIZER_DIRS (space-separated), default below.
+# Remote machines: every enabled `herdr machine`; skipped if unreachable within
+# HERDR_SESSIONIZER_REMOTE_TIMEOUT seconds (default 3, 0 disables remote listing).
 
 set -euo pipefail
 
 read -ra roots <<< "${HERDR_SESSIONIZER_DIRS:-$HOME/Projects $HOME/cc}"
 depth=${HERDR_SESSIONIZER_DEPTH:-2}
+remote_timeout=${HERDR_SESSIONIZER_REMOTE_TIMEOUT:-3}
 
 for cmd in herdr jq fzf; do
     command -v "$cmd" >/dev/null || { echo "herdr-sessionizer: missing '$cmd'" >&2; exit 1; }
 done
 
+# Entry kinds and targets:
+#   ws   <workspace_id>              local workspace
+#   rws  <machine>/<workspace_id>    workspace on a saved SSH machine
+#   dir  <path>                      local project directory
+
+# Run a herdr API command locally (machine "") or on a saved machine.
+on() {
+    local machine=$1; shift
+    if [[ -n $machine ]]; then herdr --machine "$machine" "$@"; else herdr "$@"; fi
+}
+
+# Split a target into $machine and $ws_id.
+parse_target() {
+    if [[ $1 == rws ]]; then machine=${2%%/*}; ws_id=${2#*/}; else machine=""; ws_id=$2; fi
+}
+
 # Internal: fzf preview  (herdr-sessionizer --preview <kind> <target>)
 if [[ ${1:-} == --preview ]]; then
-    if [[ $2 == ws ]]; then
-        herdr pane list --workspace "$3" | jq -r '.result.panes[] |
-            "\(.tab_id)  \(.cwd | sub("^'"$HOME"'"; "~"))  \(.agent // "")  \(.terminal_title_stripped // "")"'
-    else
-        ls -A --color=always "$3"
-    fi
+    case $2 in
+        ws|rws)
+            parse_target "$2" "$3"
+            on "$machine" pane list --workspace "$ws_id" | jq -r '.result.panes[] |
+                "\(.tab_id)  \(.cwd | sub("^'"$HOME"'"; "~"))  \(.agent // "")  \(.terminal_title_stripped // "")"' ;;
+        *) ls -A --color=always "$3" ;;
+    esac
     exit 0
 fi
 
@@ -47,12 +67,25 @@ focus_or_create() {
     fi
 }
 
+list_remote() {
+    [[ $remote_timeout == 0 ]] && return 0
+    local m json
+    herdr machine list 2>/dev/null | awk -F'\t' '$5 == "enabled" {print $2}' |
+        while IFS= read -r m; do
+            json=$(timeout "$remote_timeout" herdr --machine "$m" workspace list 2>/dev/null) || continue
+            jq -r --arg m "$m" '.result.workspaces[] |
+                "rws\t\($m)/\(.workspace_id)\t\u001b[36m[\($m)]\u001b[0m \(.label)  \u001b[90m\(.tab_count) tabs · \(.agent_status)\u001b[0m"' \
+                <<< "$json" 2>/dev/null || true
+        done
+}
+
 # Each line: <kind> TAB <target> TAB <display>
 list_entries() {
     ws_json=$(herdr workspace list)
     jq -r '.result.workspaces[] |
         "ws\t\(.workspace_id)\t\u001b[33m[ws]\u001b[0m \(.label)  \u001b[90m\(.tab_count) tabs · \(.agent_status)\u001b[0m"' \
         <<< "$ws_json"
+    list_remote
     for r in "${roots[@]}"; do
         [[ -d $r ]] || continue
         find "$r" -mindepth 1 -maxdepth "$depth" -name '.*' -prune -o -type d -print 2>/dev/null | sort |
@@ -65,7 +98,12 @@ list_entries() {
 # Internal: used by fzf bindings
 case ${1:-} in
     --list)  list_entries; exit 0 ;;
-    --close) [[ $2 == ws ]] && herdr workspace close "$3" >/dev/null; exit 0 ;;
+    --close)
+        if [[ $2 == ws || $2 == rws ]]; then
+            parse_target "$2" "$3"
+            on "$machine" workspace close "$ws_id" >/dev/null || true
+        fi
+        exit 0 ;;
 esac
 
 if [[ $# -ge 1 ]]; then
@@ -81,6 +119,6 @@ choice=$(list_entries | fzf --ansi --prompt='herdr> ' --delimiter='\t' --with-nt
 
 IFS=$'\t' read -r kind target _ <<< "$choice"
 case $kind in
-    ws)  herdr workspace focus "$target" >/dev/null ;;
-    dir) focus_or_create "$target" ;;
+    ws|rws) parse_target "$kind" "$target"; on "$machine" workspace focus "$ws_id" >/dev/null ;;
+    dir)    focus_or_create "$target" ;;
 esac
